@@ -17,7 +17,6 @@ uint16_t pc = MEMORY_START;
 uint8_t sp = 0;
 
 SDL_Window *window;
-SDL_Surface *surface;
 SDL_Event event;
 SDL_Texture *texture;
 SDL_Renderer *renderer;
@@ -27,14 +26,11 @@ int main(void) {
 	init_sdl();
 	init_chip8();
 
-	int death = 0;
 	bool quit = false;
 	while (!quit) {
 		execute();
 		draw();
 
-		death++;
-		if (death > 20) quit = true;
 		SDL_Delay(100);
 	}
 
@@ -45,11 +41,28 @@ int main(void) {
 }
 
 void init_sdl (){
-	SDL_Init(SDL_INIT_EVERYTHING);
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+		fprintf(stderr, "SDL_Init failed %s", SDL_GetError());
+		exit(1);
+	}
+
 	window = SDL_CreateWindow("Chip 8 Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 320, 0);
-	surface = SDL_GetWindowSurface(window);
+	if (!window) {
+	fprintf(stderr, "SDL_CreateWindow error: %s", SDL_GetError());
+	exit(1);
+	}
+
 	renderer = SDL_CreateRenderer(window, -1, 0);
+	if (!renderer) {
+		fprintf(stderr, "SDL_CreateRenderer error: %s", SDL_GetError());
+		exit(1);
+	}
+
 	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
+	if (!texture) {
+		fprintf(stderr, "SDL_CreateTexture error: %s", SDL_GetError());
+		exit(1);
+	}
 
 	printf("SDL Succesfully Initialized\n");
 }
@@ -102,15 +115,15 @@ void execute() {
 			break;
 
 		case 0x3000: // 3xkk
-			if (v[x] == kk) pc += 4;
+			pc += (v[x] == kk) ? 4 : 2;
 			break;
 
 		case 0x4000: // 4xkk
-			if (v[x] != kk) pc +=4;
+			pc += (v[x] != kk) ? 4 : 2;
 			break;
 
 		case 0x5000: // 5xy0
-			if (v[x] == v[y]) pc +=4;
+			pc += (v[x] == v[y]) ? 4 : 2;
 			break;
 
 		case 0x6000: // 6xkk
@@ -155,7 +168,7 @@ void execute() {
 					break;
 
 				case 0x0005: // 8xy5
-					v[0xf] = v[x] > v[y] ? 1 : 0;
+					v[0xf] = v[x] >= v[y] ? 1 : 0;
 					v[x] = v[x] - v[y];
 					pc += 2;
 					break;
@@ -167,7 +180,7 @@ void execute() {
 					break;
 
 				case 0x0007: // 8xy7
-					v[0xf] = v[y] > v[x] ? 1 : 0;
+					v[0xf] = v[y] >= v[x] ? 1 : 0;
 					v[x] = v[y] - v[x];
 					pc += 2;
 					break;
@@ -178,6 +191,7 @@ void execute() {
 					pc += 2;
 					break;
 			}
+			break;
 
 		case 0x9000: // 9xy0
 			if (v[x] != v[y]) pc += 2;
@@ -207,10 +221,10 @@ void execute() {
 
 				for (int xline = 0; xline < 8; xline++) {
 					if (row & (1 << (7 - xline))) {
-						if (display[(y + yline) % 32][(x + xline) % 64] == 1) {
+						if (display[(v[y] + yline) % 32][(v[x] + xline) % 64] == 1) {
 							v[0xf] = 1;
 						}
-						display[(y + yline) % 32][(x + xline) % 64] ^= 1;
+						display[(v[y] + yline) % 32][(v[x] + xline) % 64] ^= 1;
 					}
 				}
 			}
