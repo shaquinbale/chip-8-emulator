@@ -1,4 +1,6 @@
 #include "main.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_render.h>
 
 
 uint8_t memory[MEMORY_SIZE] = {0};
@@ -18,13 +20,14 @@ SDL_Window *window;
 SDL_Surface *surface;
 SDL_Event event;
 SDL_Texture *texture;
+SDL_Renderer *renderer;
 
 
 int main(void) {
 	init_sdl();
 	init_chip8();
 
-	bool quit = false;
+	bool quit = true;
 	while (!quit) {
 		execute();
 		draw();
@@ -36,13 +39,11 @@ int main(void) {
 }
 
 void init_sdl (){
-	if (SDL_Init(SDL_INIT_EVERYTHING < 0)) fprintf(stderr, "Error initializing: %s\n", SDL_GetError());
-
+	SDL_Init(SDL_INIT_EVERYTHING);
 	window = SDL_CreateWindow("Chip 8 Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 320, 0);
-	if (window == NULL) fprintf(stderr, "Error creating window: %s\n", SDL_GetError());
-
 	surface = SDL_GetWindowSurface(window);
-	if (surface == NULL) fprintf(stderr, "Error getting window surface: %s\n", SDL_GetError());
+	renderer = SDL_CreateRenderer(window, -1, 0);
+	texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
 }
 
 void init_chip8() {
@@ -161,6 +162,18 @@ void execute() {
 			break;
 
 		case 0xd000: // Dxyn
+			for (int yline = 0; yline < n; yline++) {
+				uint8_t row = memory[i + yline];
+
+				for (int xline = 0; xline < 8; xline++) {
+					if (row & (1 << (7 - xline))) {
+						if (display[(x + xline) % 64][(y + yline) % 32] == 1) {
+							v[0xf] = 1;
+						}
+						display[(x + xline) % 64][(y + yline) % 32] ^= 1;
+					}
+				}
+			}
 			break;
 
 		case 0xe000:
@@ -175,5 +188,17 @@ void execute() {
 }
 
 void draw() {
+	uint32_t pixels[32][64];
 
+	for(int x = 0; x < 64; x++) {
+		for (int y = 0; y < 32; y++) {
+			if (display[x][y] == 1) {
+				pixels[x][y] = 0xFFFFFFFF;
+			}
+		}
+	}
+
+	SDL_UpdateTexture(texture, NULL, pixels, 64 * sizeof(uint32_t));
+	SDL_RenderCopy(renderer, texture, NULL, NULL);
+	SDL_RenderPresent(renderer);
 }
