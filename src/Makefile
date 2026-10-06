@@ -1,2 +1,2 @@
 main: main.c
-	gcc -o main main.c -lSDL2
+	gcc -o main main.c main.h -lSDL2
