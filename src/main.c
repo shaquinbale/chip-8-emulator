@@ -1,13 +1,11 @@
 #include "main.h"
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_timer.h>
-#include <SDL2/SDL_video.h>
 
 
 uint8_t memory[MEMORY_SIZE] = {0};
-uint8_t v[8] = {0};
+uint8_t v[16] = {0};
 uint16_t stack[16] = {0};
 int display[32][64] = {0};
+uint16_t opcode;
 
 uint8_t delay = 0;
 uint8_t sound = 0;
@@ -53,47 +51,126 @@ void init_chip8() {
 }
 
 void execute() {
-	int opcode = ((memory[pc] << 8) + memory[pc+1]);	
-	int nnn = opcode & 0x0fff;
-	int n = opcode & 0x000f;
-	int x = opcode & 0x0f00;
-	int y = opcode & 0x00f0;
-	int kk = opcode & 0x00ff;
+	uint8_t x, y, kk, n;
+	uint16_t nnn;
+	uint16_t i; // Used for logging the carry
+
+	opcode = ((memory[pc] << 8) + memory[pc+1]);	
+	nnn = opcode & 0x0fff;
+	n = opcode & 0x000f;
+	x = opcode & 0x0f00;
+	y = opcode & 0x00f0;
+	kk = opcode & 0x00ff;
+
 
 	switch(opcode & 0xf000) {
 
 		case 0x0000:
+			if (opcode == 0x00e0) {memset(display, 0, 32 * 64 * sizeof(int));} // 00E0
+			else {} // 00EE
 			break;
-		case 0x1000:
+
+		case 0x1000: // 1nnn
+			pc = nnn;
 			break;
-		case 0x2000:
+
+		case 0x2000: // 2nnn
+			sp++;
+			pc = stack[sp];
 			break;
-		case 0x3000:
+
+		case 0x3000: // 3xkk
+			if (v[x] == kk) pc += 2;
 			break;
-		case 0x4000:
+
+		case 0x4000: // 4xkk
+			if (v[x] != kk) pc +=2;
 			break;
-		case 0x5000:
+
+		case 0x5000: // 5xy0
+			if (v[x] == v[y]) pc +=2;
 			break;
-		case 0x6000:
+
+		case 0x6000: // 6xkk
+			v[x] = kk;
 			break;
-		case 0x7000:
+
+		case 0x7000: // 7xkk
+			v[x] += kk;
 			break;
+
 		case 0x8000:
+			switch (opcode & 0x000f) {
+
+				case 0x0000: // 8xy0
+					v[x] = v[y];
+				break;
+
+				case 0x0001: // 8xy1
+					v[x] |= v[y];
+				break;
+
+				case 0x0002: // 8xy2
+					v[x] &= v[y];
+				break;
+
+				case 0x0003: // 8xy3
+					v[x] ^= v[y];
+				break;
+					
+				case 0x0004: // 8xy4
+					i = v[x] + v[y];
+					v[x] = i & 0x00ff;
+					i = i >> 8;
+					v[0xf] = v[0xf] & i;
+				break;
+
+				case 0x0005: // 8xy5
+					v[0xf] = v[x] > v[y] ? 1 : 0;
+					v[x] = v[x] - v[y];
+				break;
+
+				case 0x0006: // 8xy6
+					v[0xf] = (v[x] & 0x01) == 1 ? 1 : 0;
+				break;
+
+				case 0x0007: // 8xy7
+					v[0xf] = v[y] > v[x] ? 1 : 0;
+					v[x] = v[y] - v[x];
+				break;
+
+				case 0x000e: // 8xyE
+					v[0xf] = (v[x] >> 7);
+				break;
+			}
+
+		case 0x9000: // 9xy0
+			if (v[x] != v[y]) pc += 2;
 			break;
-		case 0x9000:
+
+		case 0xa000: // Annn
+			i = nnn;
 			break;
-		case 0xa000:
+
+		case 0xb000: // Bnnn
+			pc = nnn + v[0];
 			break;
-		case 0xb000:
+
+		case 0xc000: // Cxkk
+			v[x] = (rand() % 256) & kk;
 			break;
-		case 0xc000:
+
+		case 0xd000: // Dxyn
 			break;
-		case 0xd000:
-			break;
+
 		case 0xe000:
-			
+
+			if (opcode == 0x0090) {} // Ex9E
+			else {} // ExA1
+		//
 		case 0xf000:
-			break;
+			switch(opcode & 0x00ff) {
+			}
 	}
 }
 

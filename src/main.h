@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 
 #define MEMORY_SIZE 4096
