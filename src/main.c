@@ -36,7 +36,7 @@ int main(void) {
 		draw();
 		handle_input();
 
-		SDL_Delay(100);
+		//SDL_Delay(1);
 	}
 
 
@@ -73,7 +73,7 @@ void init_sdl (){
 }
 
 void init_chip8() {
-	FILE *rom = fopen("../roms/1-chip8-logo.ch8", "rb");
+	FILE *rom = fopen("../roms/5-quirks.ch8", "rb");
 	fread(&memory[MEMORY_START], sizeof(uint8_t), MEMORY_SIZE - MEMORY_START, rom);
 
 	printf("ROM succesfully initialized\n");
@@ -84,6 +84,7 @@ void execute() {
 	uint8_t x, y, kk, n;
 	uint16_t nnn;
 	uint16_t sum; // Used for logging the carry
+	uint8_t carry;
 
 	opcode = (memory[pc] << 8 | memory[pc+1]);	
 
@@ -97,7 +98,6 @@ void execute() {
 	switch(opcode & 0xf000) {
 
 		case 0x0000:
-			printf("00e0\n");
 			if (opcode == 0x00e0) {
 				memset(display, 0, 32 * 64 * sizeof(int)); // 00E0
 				pc += 2;
@@ -132,7 +132,6 @@ void execute() {
 			break;
 
 		case 0x6000: // 6xkk
-			printf("6xkk, 6%x%x\n", x, kk);
 			v[x] = kk;
 			pc += 2;
 			break;
@@ -173,26 +172,31 @@ void execute() {
 					break;
 
 				case 0x0005: // 8xy5
-					v[0xf] = v[x] >= v[y] ? 1 : 0;
-					v[x] = v[x] - v[y];
+					carry = v[x] >= v[y] ? 1 : 0;
+					v[x] -= v[y];
+					v[0xf] = carry;
 					pc += 2;
 					break;
 
 				case 0x0006: // 8xy6
-					v[0xf] = (v[x] & 0x01) == 1 ? 1 : 0;
+					carry = (v[x] & 0x01) == 1 ? 1 : 0;
 					v[x] >>= 1;
+					v[0xf] = carry;
 					pc += 2;
 					break;
 
 				case 0x0007: // 8xy7
-					v[0xf] = v[y] >= v[x] ? 1 : 0;
+					carry = v[y] >= v[x] ? 1 : 0;
 					v[x] = v[y] - v[x];
+					v[0xf] = carry;
 					pc += 2;
 					break;
 
-				case 0x000e: // 8xyE
-					v[0xf] = (v[x] >> 7);
+				case 0x000e: // 8xyE1
+					v[x] = v[y];
+					carry = (v[x] >> 7);
 					v[x] <<= 1;
+					v[0xf] = carry;
 					pc += 2;
 					break;
 			}
@@ -204,7 +208,6 @@ void execute() {
 			break;
 
 		case 0xa000: // Annn
-			printf("6nnn, 6%x\n", nnn);
 			i = nnn;
 			pc += 2;
 			break;
@@ -219,7 +222,6 @@ void execute() {
 			break;
 
 		case 0xd000: // Dxyn
-			printf("Dxyn, D%x%x%x\n", x, y, n);
 			v[0xf] = 0;
 			for (int yline = 0; yline < n; yline++) {
 				uint8_t row = memory[i + yline];
@@ -253,6 +255,7 @@ void execute() {
 			switch(opcode & 0x00ff) {
 				case 0x0007:
 					v[x] = delay;
+					pc += 2;
 					break;
 
 				case 0x000a:
@@ -268,36 +271,43 @@ void execute() {
 
 				case 0x015:
 					delay = v[x];
+					pc += 2;
 					break;
 
 				case 0x018:
 					sound = v[x];
+					pc += 2;
 					break;
 
 				case 0x01e:
 					i += v[x];
+					pc += 2;
 					break;
 
 				case 0x029:
 					// Needs implemented
 					break;
 
-				case 0x033:
+				case 0x033: // Does not pass test 3
 					memory[i] = v[x] / 100;
 					memory[i + 1] = (v[x] / 10) & 10;
 					memory[i + 2] = v[x] & 10;
+					pc += 2;
 					break;
 
 				case 0x055:
 					for (int reg = 0; reg <= x; reg++) {
 						memory[i + reg] = v[reg];
 					}
+					pc += 2;
 					break;
 
 				case 0x0065:
 					for (int reg = 0; reg <= x; reg++) {
 						v[reg] = memory[i + reg];
 					}
+					pc += 2;
+					break;
 			}
 	}
 }
@@ -328,41 +338,41 @@ void handle_input() {
 
 		if (event.type == SDL_KEYDOWN) {
 			switch(event.key.keysym.sym) {
-				case SDLK_1: keypad[0x0] = 1; break;
-				case SDLK_2: keypad[0x1] = 1; break;
-				case SDLK_3: keypad[0x2] = 1; break;
-				case SDLK_4: keypad[0x3] = 1; break;
+				case SDLK_1: keypad[0x1] = 1; break;
+				case SDLK_2: keypad[0x2] = 1; break;
+				case SDLK_3: keypad[0x3] = 1; break;
+				case SDLK_4: keypad[0xc] = 1; break;
 				case SDLK_q: keypad[0x4] = 1; break;
 				case SDLK_w: keypad[0x5] = 1; break;
 				case SDLK_e: keypad[0x6] = 1; break;
-				case SDLK_r: keypad[0x7] = 1; break;
-				case SDLK_a: keypad[0x8] = 1; break;
-				case SDLK_s: keypad[0x9] = 1; break;
-				case SDLK_d: keypad[0xa] = 1; break;
-				case SDLK_f: keypad[0xb] = 1; break;
-				case SDLK_z: keypad[0xc] = 1; break;
-				case SDLK_x: keypad[0xd] = 1; break;
-				case SDLK_c: keypad[0xe] = 1; break;
+				case SDLK_r: keypad[0xd] = 1; break;
+				case SDLK_a: keypad[0x7] = 1; break;
+				case SDLK_s: keypad[0x8] = 1; break;
+				case SDLK_d: keypad[0x9] = 1; break;
+				case SDLK_f: keypad[0xe] = 1; break;
+				case SDLK_z: keypad[0xa] = 1; break;
+				case SDLK_x: keypad[0x0] = 1; break;
+				case SDLK_c: keypad[0xb] = 1; break;
 				case SDLK_v: keypad[0xf] = 1; break;
 			}
 		}
 		if (event.type == SDL_KEYUP) {
 			switch(event.key.keysym.sym) {
-				case SDLK_1: keypad[0x0] = 0; break;
-				case SDLK_2: keypad[0x1] = 0; break;
-				case SDLK_3: keypad[0x2] = 0; break;
-				case SDLK_4: keypad[0x3] = 0; break;
+				case SDLK_1: keypad[0x1] = 0; break;
+				case SDLK_2: keypad[0x2] = 0; break;
+				case SDLK_3: keypad[0x3] = 0; break;
+				case SDLK_4: keypad[0xc] = 0; break;
 				case SDLK_q: keypad[0x4] = 0; break;
 				case SDLK_w: keypad[0x5] = 0; break;
 				case SDLK_e: keypad[0x6] = 0; break;
-				case SDLK_r: keypad[0x7] = 0; break;
-				case SDLK_a: keypad[0x8] = 0; break;
-				case SDLK_s: keypad[0x9] = 0; break;
-				case SDLK_d: keypad[0xa] = 0; break;
-				case SDLK_f: keypad[0xb] = 0; break;
-				case SDLK_z: keypad[0xc] = 0; break;
-				case SDLK_x: keypad[0xd] = 0; break;
-				case SDLK_c: keypad[0xe] = 0; break;
+				case SDLK_r: keypad[0xd] = 0; break;
+				case SDLK_a: keypad[0x7] = 0; break;
+				case SDLK_s: keypad[0x8] = 0; break;
+				case SDLK_d: keypad[0x9] = 0; break;
+				case SDLK_f: keypad[0xe] = 0; break;
+				case SDLK_z: keypad[0xa] = 0; break;
+				case SDLK_x: keypad[0x0] = 0; break;
+				case SDLK_c: keypad[0xb] = 0; break;
 				case SDLK_v: keypad[0xf] = 0; break;
 			}
 		}
