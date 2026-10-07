@@ -239,14 +239,65 @@ void execute() {
 		case 0xe000:
 			switch(opcode & 0x00ff) {
 				case 0x009e:
-				break;
+					if (keypad[v[x]] == 1) pc += 2;
+					pc += 2;
+					break;
 
 				case 0x00a1:
+					if (keypad[v[x]] == 0) pc +=2;
+					pc += 2;
 				break;
 			}
 
 		case 0xf000:
 			switch(opcode & 0x00ff) {
+				case 0x0007:
+					v[x] = delay;
+					break;
+
+				case 0x000a:
+					for (int key = 0; key < 16; key++) {
+						if (keypad[key]) {
+							v[x] = key;
+							return;
+						}
+					}
+					
+					pc -= 2;
+					break;
+
+				case 0x015:
+					delay = v[x];
+					break;
+
+				case 0x018:
+					sound = v[x];
+					break;
+
+				case 0x01e:
+					i += v[x];
+					break;
+
+				case 0x029:
+					// Needs implemented
+					break;
+
+				case 0x033:
+					memory[i] = v[x] / 100;
+					memory[i + 1] = (v[x] / 10) & 10;
+					memory[i + 2] = v[x] & 10;
+					break;
+
+				case 0x055:
+					for (int reg = 0; reg <= x; reg++) {
+						memory[i + reg] = v[reg];
+					}
+					break;
+
+				case 0x0065:
+					for (int reg = 0; reg <= x; reg++) {
+						v[reg] = memory[i + reg];
+					}
 			}
 	}
 }
