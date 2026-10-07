@@ -15,6 +15,7 @@ void init_sdl();
 void init_chip8();
 void execute();
 void draw();
+void handle_input();
 
 
 

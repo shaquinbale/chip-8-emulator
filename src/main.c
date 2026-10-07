@@ -1,5 +1,6 @@
 #include "main.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
 #include <SDL2/SDL_render.h>
 
 
@@ -7,8 +8,9 @@ uint8_t memory[MEMORY_SIZE] = {0};
 uint8_t v[16] = {0};
 uint16_t stack[16] = {0};
 int display[32][64] = {0};
-uint16_t opcode;
+bool keypad[16] = {false};
 
+uint16_t opcode;
 uint8_t delay = 0;
 uint8_t sound = 0;
 
@@ -21,21 +23,18 @@ SDL_Event event;
 SDL_Texture *texture;
 SDL_Renderer *renderer;
 
+bool quit = false;
+
 
 int main(void) {
 	init_sdl();
 	init_chip8();
 
-	SDL_Event event;
 
-	bool quit = false;
 	while (!quit) {
-		while(SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT) {quit = true;}
-		}
-
 		execute();
 		draw();
+		handle_input();
 
 		SDL_Delay(100);
 	}
@@ -74,7 +73,7 @@ void init_sdl (){
 }
 
 void init_chip8() {
-	FILE *rom = fopen("../roms/test01.ch8", "rb");
+	FILE *rom = fopen("../roms/1-chip8-logo.ch8", "rb");
 	fread(&memory[MEMORY_START], sizeof(uint8_t), MEMORY_SIZE - MEMORY_START, rom);
 
 	printf("ROM succesfully initialized\n");
@@ -266,4 +265,55 @@ void draw() {
 	SDL_UpdateTexture(texture, NULL, pixels, 64 * sizeof(uint32_t));
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
 	SDL_RenderPresent(renderer);
+}
+
+void handle_input() {
+	SDL_Event event;
+
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_QUIT) {
+			quit = true;
+		}
+
+		if (event.type == SDL_KEYDOWN) {
+			switch(event.key.keysym.sym) {
+				case SDLK_1: keypad[0x0] = 1; break;
+				case SDLK_2: keypad[0x1] = 1; break;
+				case SDLK_3: keypad[0x2] = 1; break;
+				case SDLK_4: keypad[0x3] = 1; break;
+				case SDLK_q: keypad[0x4] = 1; break;
+				case SDLK_w: keypad[0x5] = 1; break;
+				case SDLK_e: keypad[0x6] = 1; break;
+				case SDLK_r: keypad[0x7] = 1; break;
+				case SDLK_a: keypad[0x8] = 1; break;
+				case SDLK_s: keypad[0x9] = 1; break;
+				case SDLK_d: keypad[0xa] = 1; break;
+				case SDLK_f: keypad[0xb] = 1; break;
+				case SDLK_z: keypad[0xc] = 1; break;
+				case SDLK_x: keypad[0xd] = 1; break;
+				case SDLK_c: keypad[0xe] = 1; break;
+				case SDLK_v: keypad[0xf] = 1; break;
+			}
+		}
+		if (event.type == SDL_KEYUP) {
+			switch(event.key.keysym.sym) {
+				case SDLK_1: keypad[0x0] = 0; break;
+				case SDLK_2: keypad[0x1] = 0; break;
+				case SDLK_3: keypad[0x2] = 0; break;
+				case SDLK_4: keypad[0x3] = 0; break;
+				case SDLK_q: keypad[0x4] = 0; break;
+				case SDLK_w: keypad[0x5] = 0; break;
+				case SDLK_e: keypad[0x6] = 0; break;
+				case SDLK_r: keypad[0x7] = 0; break;
+				case SDLK_a: keypad[0x8] = 0; break;
+				case SDLK_s: keypad[0x9] = 0; break;
+				case SDLK_d: keypad[0xa] = 0; break;
+				case SDLK_f: keypad[0xb] = 0; break;
+				case SDLK_z: keypad[0xc] = 0; break;
+				case SDLK_x: keypad[0xd] = 0; break;
+				case SDLK_c: keypad[0xe] = 0; break;
+				case SDLK_v: keypad[0xf] = 0; break;
+			}
+		}
+	}
 }
